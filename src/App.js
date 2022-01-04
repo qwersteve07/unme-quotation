@@ -5,6 +5,7 @@ import classnames from 'classnames/bind';
 import firebase from 'firebase/app';
 import 'firebase/storage';
 import ReactLoading from 'react-loading';
+import iconRefresh from './images/refresh.svg';
 const cx = classnames.bind(styles);
 
 var firebaseConfig = {
@@ -26,7 +27,7 @@ function App() {
   const [uploadState, setUploadState] = useState('init');
   const storage = firebase.storage();
 
-  useEffect(() => {
+  const fetchImage = () => {
     var listRef = storage.ref().child('');
 
     listRef
@@ -34,6 +35,7 @@ function App() {
       .then(res => {
         // get item
         const length = res.items.length;
+
         const pickItem = res.items[random(0, length - 1)];
         // get item url
         storage
@@ -46,7 +48,11 @@ function App() {
       .catch(error => {
         // Uh-oh, an error occurred!
       });
-  }, []);
+  };
+
+  useEffect(() => {
+    fetchImage();
+  }, []); // eslint-disable-line
 
   const uploadFile = file => {
     setUploadState('uploading');
@@ -61,7 +67,13 @@ function App() {
       .then(url => {
         setUploadState('done');
       })
-      .catch(console.error);
+      .catch(e => console.error(e));
+  };
+
+  const refreshImage = () => {
+    setImageUrl(undefined);
+    setImageLoad(false);
+    fetchImage();
   };
 
   const Thanks = () => {
@@ -75,12 +87,14 @@ function App() {
     <div className={styles.app}>
       <h1>UNME 陪你過日子</h1>
       <p>就讓非我設計的每個人，在你最失意的時刻，用最真實的模樣陪伴著你。</p>
-      <div className={cx({ image: true, load: imageLoad })}>
-        {!imageUrl ? (
-          <ReactLoading type="spin" color="#999999" height={20} width={20} />
-        ) : (
-          <img src={imageUrl} alt="quote" onLoad={() => setImageLoad(true)} onChange={x => console.log(x)} />
-        )}
+      <div className={cx({ container: true, load: imageLoad })}>
+        <div className={styles.refresh} onClick={refreshImage}>
+          <img src={iconRefresh} alt="refresh" />
+        </div>
+        <div className={styles.image}>
+          {(!imageUrl || !imageLoad) && <ReactLoading type="spin" color="#999999" height={20} width={20} />}
+          <img src={imageUrl} alt="quote" onLoad={() => setImageLoad(true)} />
+        </div>
       </div>
       <div className={styles.contribute}>
         你也想讓我們的每一天能夠更快樂嗎？
