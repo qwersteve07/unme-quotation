@@ -1,11 +1,9 @@
 import styles from './app.module.sass';
 import random from 'lodash/random';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import classnames from 'classnames/bind';
-import ReactLoading from 'react-loading';
 import iconRefresh from './assets/refresh.svg';
 import iconLogo from './assets/logo.svg';
-
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -14,90 +12,172 @@ import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+import LoadingButton from '@mui/lab/LoadingButton';
+import { API_DOMAIN } from './config';
 const cx = classnames.bind(styles);
 
 function App() {
-  const inputRef = useRef('');
-  const [imageUrl, setImageUrl] = useState();
+  const [image, setImage] = useState();
   const [imageLoad, setImageLoad] = useState(false);
-  const [uploadState, setUploadState] = useState('init');
   const [dialogShow, setDialogShow] = useState(false);
+  const [uploadData, setUploadData] = useState({});
+  const [uploading, setUploading] = useState(false);
+  const [contributing, setContributing] = useState(false);
 
-  const fetchImage = () => {
-    // var listRef = storage.ref().child('');
-    // listRef
-    //   .listAll()
-    //   .then(res => {
-    //     // get item
-    //     const length = res.items.length;
-    //     const pickItem = res.items[random(0, length - 1)];
-    //     // get item url
-    //     storage
-    //       .ref(pickItem.name)
-    //       .getDownloadURL()
-    //       .then(url => {
-    //         setImageUrl(url);
-    //       });
-    //   })
-    //   .catch(error => {
-    //     // Uh-oh, an error occurred!
-    //   });
+  const fetchImage = async () => {
+    const images = await fetch(`${API_DOMAIN}/images`).then(res => res.json());
+
+    const imagesLength = images.length;
+    const item = images[random(0, imagesLength - 1)];
+    setImage(item);
   };
 
   useEffect(() => {
     fetchImage();
   }, []); // eslint-disable-line
 
-  const uploadFile = async file => {
-    setUploadState('uploading');
-
-    // const data = {
-    //   image: file,
-    // };
-
-    fetch('http://localhost:8080/images', {
-      body: {
-        imageUrl,
-      },
-      method: 'POST',
-    })
-      .then(data => {
-        console.log(data);
-      })
-      .catch(err => {
-        console.log(err);
-      });
-
-    setUploadState('done');
-  };
-
   const refreshImage = () => {
-    setImageUrl(undefined);
+    setImage(null);
     setImageLoad(false);
     fetchImage();
   };
 
-  const Thanks = () => {
-    if (uploadState === 'uploading') return <ReactLoading type="spin" color="#999999" height={20} width={20} />;
-    if (uploadState === 'done') return '謝謝您的貢獻，肥婆奶奶：）';
+  const handleDialogOpen = () => setDialogShow(true);
 
-    return <></>;
+  const handleDialogClose = () => setDialogShow(false);
+
+  const handleUploadDataChange = (type, value) => {
+    setUploadData(prev => ({ ...prev, [type]: value }));
   };
 
-  const handleDialogOpen = () => setDialogShow(true);
-  const handleDialogClose = () => setDialogShow(false);
   const handleUploadFile = async file => {
+    setUploading(true);
     let data = new FormData();
     data.append('file', file);
-    const imageUrl = await fetch('http://localhost:8080/upload', {
+    await fetch(`${API_DOMAIN}/upload`, {
       body: data,
       method: 'POST',
     })
       .then(res => res.json())
-      .then(value => console.log(value))
-      .catch(err => console.log(err));
+      .then(value => {
+        setUploadData(prev => ({ ...prev, imageUrl: value.url }));
+      })
+      .catch(err => console.log(err))
+      .finally(() => {
+        setUploading(false);
+      });
   };
-  const handleContribute = () => {};
+
+  const handleContribute = async () => {
+    setContributing(true);
+    await fetch(`${API_DOMAIN}/images`, {
+      body: JSON.stringify(uploadData),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+    })
+      .then(() => {
+        setDialogShow(false);
+        setUploadData(() => ({}));
+      })
+      .catch(err => {
+        console.log(err);
+      })
+      .finally(() => {
+        setContributing(false);
+      });
+  };
+
+  const ContributeDialog = () => {
+    return (
+      <Dialog open={dialogShow} onClose={handleDialogClose}>
+        <DialogTitle>DO IT</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="name"
+            label="名稱"
+            placeholder="是哪位動物熱心的提供呢？"
+            type="text"
+            fullWidth
+            variant="standard"
+            onChange={e => handleUploadDataChange('name', e.target.value)}
+          />
+          <TextField
+            margin="dense"
+            id="comment"
+            label="說明"
+            placeholder="請補充這人在幹嘛"
+            type="text"
+            fullWidth
+            variant="standard"
+            onChange={e => handleUploadDataChange('comment', e.target.value)}
+          />
+          <Button disabled={uploading} margin="dense" variant="outlined" component="label">
+            {uploading ? <CircularProgress size={25} /> : '選擇圖片'}
+            <input hidden accept="image/*" type="file" onChange={e => handleUploadFile(e.target.files[0])} />
+          </Button>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="text" onClick={handleDialogClose}>
+            取消
+          </Button>
+
+          <LoadingButton
+            disabled={Object.keys(uploadData).length !== 3}
+            onClick={handleContribute}
+            loading={contributing}
+            loadingPosition="start"
+            variant="contained"
+          >
+            傳送！
+          </LoadingButton>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
+  const Image = () => {
+    const Loading = () => {
+      return (
+        <Box sx={{ display: 'flex' }}>
+          <CircularProgress />
+        </Box>
+      );
+    };
+    if (!image) {
+      return (
+        <div className={styles['loading-container']}>
+          <Loading />
+        </div>
+      );
+    }
+
+    return (
+      <div className={styles['image-container']}>
+        {imageLoad && (
+          <div className={styles.refresh} onClick={refreshImage}>
+            <img src={iconRefresh} alt="refresh" />
+          </div>
+        )}
+        <div className={styles.name}>
+          由 <b>{image.name}</b> 所提供
+        </div>
+        <div className={styles.image}>
+          {!imageLoad && <Loading />}
+          <img
+            style={{ display: imageLoad ? 'block' : 'none' }}
+            src={image.imageUrl}
+            alt="quote"
+            onLoad={() => setImageLoad(true)}
+          />
+        </div>
+        <div className={styles.comment}>{image.comment}</div>
+      </div>
+    );
+  };
 
   return (
     <div className={styles.app}>
@@ -105,52 +185,13 @@ function App() {
       <h1>UNME 陪你過日子</h1>
       <p>就讓非我設計的每個人，在你最失意的時刻，用最真實的模樣陪伴著你。</p>
       <div className={cx({ container: true, load: imageLoad })}>
-        <div className={styles.refresh} onClick={refreshImage}>
-          <img src={iconRefresh} alt="refresh" />
-        </div>
-        <div className={styles.image}>
-          {(!imageUrl || !imageLoad) && (
-            <Box sx={{ display: 'flex' }}>
-              <CircularProgress />
-            </Box>
-          )}
-          <img src={imageUrl} alt="quote" onLoad={() => setImageLoad(true)} />
-        </div>
+        <Image />
       </div>
 
       <Button variant="outlined" onClick={handleDialogOpen}>
         上傳 UNME 的歡樂時光
       </Button>
-      <ContributeDialog
-        show={dialogShow}
-        onDismiss={handleDialogClose}
-        onUploadFile={handleUploadFile}
-        onContribute={handleContribute}
-      />
-      {/* 
-      <div className={styles.contribute}>
-        <input
-          type="file"
-          id="file"
-          ref={inputRef}
-          onChange={e => {
-            uploadFile(e.target.files[0]);
-          }}
-        />
-        <button
-          type="file"
-          name="upload"
-          id="file-upload"
-          onClick={() => {
-            inputRef.current.click();
-          }}
-        >
-          是！我很樂意！
-        </button>
-        <div className={styles.thanks}>
-          <Thanks />
-        </div>
-      </div> */}
+      {ContributeDialog()}
       <footer>
         Design by Steve Lee .<br />
         Contribution by UNME Design.
@@ -158,55 +199,5 @@ function App() {
     </div>
   );
 }
-
-const ContributeDialog = ({ show, onDismiss, onUploadFile, onContribute }) => {
-  return (
-    <Dialog open={show} onClose={onDismiss}>
-      <DialogTitle>DO IT</DialogTitle>
-      <DialogContent>
-        <TextField
-          autoFocus
-          margin="dense"
-          id="name"
-          label="名稱"
-          placeholder="是哪位動物熱心的提供呢？"
-          type="text"
-          fullWidth
-          variant="standard"
-        />
-        <TextField
-          autoFocus
-          margin="dense"
-          id="comment"
-          label="說明"
-          placeholder="請補充這人在幹嘛"
-          type="text"
-          fullWidth
-          variant="standard"
-        />
-
-        <Button margin="dense" variant="outlined" component="label">
-          選擇圖片
-          <input
-            hidden
-            accept="image/*"
-            type="file"
-            onChange={e => {
-              onUploadFile(e.target.files[0]);
-            }}
-          />
-        </Button>
-      </DialogContent>
-      <DialogActions>
-        <Button variant="text" onClick={onDismiss}>
-          取消
-        </Button>
-        <Button variant="contained" onClick={onContribute}>
-          傳送！
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
 
 export default App;

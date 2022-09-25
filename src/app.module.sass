@@ -15,56 +15,76 @@
       font-weight: 900
     .container
       width: 100%
-      max-width: 500px
-      height: 300px
       display: flex
       justify-content: center
       align-items: center
-      border: 1px solid #bfbfbf
-      border-radius: 40px
       margin: 40px 
       position: relative
       
-      .refresh
-        position: absolute
-        right: -18px
-        top: -18px
-        width: 50px
-        height: 50px
-        display: flex
-        justify-content: center
-        align-items: center
-        border-radius: 25px
-        background: white
-        border: 1px solid #bfbfbf
-        z-index: 100
-        cursor: pointer
+    .refresh
+      position: absolute
+      right: -24px
+      top: -6px
+      width: 50px
+      height: 50px
+      display: flex
+      justify-content: center
+      align-items: center
+      border-radius: 25px
+      background: white
+      border: 1px solid #bfbfbf
+      z-index: 100
+      cursor: pointer
+      &>img
+        width: 30px
+        transition: 0.3s ease all
+      &:hover
         &>img
-          width: 30px
+          transform: rotate(-45deg)
           transition: 0.3s ease all
-        &:hover
-          &>img
-            transform: rotate(-45deg)
-            transition: 0.3s ease all
+    .loading-container
+      overflow: hidden
+      height: 300px
+      width: 100%
+      display: flex
+      justify-content: center
+      align-items: center
+      width: 500px
+      border-radius: 40px
+      border: 1px solid #bfbfbf
+    .image-container
+      position: relative
+      max-width: 500px
+      height: 100%
+      display: flex
+      justify-content: center
+      align-items: center
+      flex-direction: column
+      .name,.comment
+        border: 1px solid #bfbfbf
+        border-radius: 30px
+        background: white
+        position: relative
+        padding: 10px 15px
+      .name
+        margin-bottom: -25px
+      .comment
+        margin-top: -25px
+        max-width: 200px
       .image
-        overflow: hidden
-        min-height: 300px
-        width: 100%
-        height: 100%
         display: flex
         justify-content: center
         align-items: center
-        &>img
-          display: none
+        min-height: 150px
+        min-width: 150px
+        height: 100%
+        overflow: hidden
+        border-radius: 20px
+        border: 1px solid #bfbfbf
+        img
+          width: 100%
 
-      &.load
-        height: auto
-        min-height: 300px
-        .image
-          border-radius: 40px
-          &>img
-            display: inherit
-            width: 100%
+
     .contribute
       border-top: 1px solid #bfbfbf
       border-bottom: 1px solid #bfbfbf
@@ -90,6 +110,7 @@
         font-size: 14px
         color: #999999
     footer
+      margin: 50px 0
       text-align: center
       color: #999999
       font-size: 12px
