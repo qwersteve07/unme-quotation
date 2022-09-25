@@ -13,8 +13,16 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import LoadingButton from '@mui/lab/LoadingButton';
-import { API_DOMAIN } from './config';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { grey } from '@mui/material/colors';
+import http from './http';
+
 const cx = classnames.bind(styles);
+const theme = createTheme({
+  palette: {
+    primary: grey,
+  },
+});
 
 function App() {
   const [image, setImage] = useState();
@@ -25,16 +33,15 @@ function App() {
   const [contributing, setContributing] = useState(false);
 
   const fetchImage = async () => {
-    const images = await fetch(`${API_DOMAIN}/images`).then(res => res.json());
-
-    const imagesLength = images.length;
-    const item = images[random(0, imagesLength - 1)];
+    const data = await http.fetchImages();
+    const imagesLength = data.length;
+    const item = data[random(0, imagesLength - 1)];
     setImage(item);
   };
 
   useEffect(() => {
     fetchImage();
-  }, []); // eslint-disable-line
+  }, []);
 
   const refreshImage = () => {
     setImage(null);
@@ -54,15 +61,13 @@ function App() {
     setUploading(true);
     let data = new FormData();
     data.append('file', file);
-    await fetch(`${API_DOMAIN}/upload`, {
-      body: data,
-      method: 'POST',
-    })
-      .then(res => res.json())
+
+    await http
+      .uploadPhoto({ data })
       .then(value => {
+        console.log(value);
         setUploadData(prev => ({ ...prev, imageUrl: value.url }));
       })
-      .catch(err => console.log(err))
       .finally(() => {
         setUploading(false);
       });
@@ -70,19 +75,12 @@ function App() {
 
   const handleContribute = async () => {
     setContributing(true);
-    await fetch(`${API_DOMAIN}/images`, {
-      body: JSON.stringify(uploadData),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      method: 'POST',
-    })
-      .then(() => {
+    await http
+      .uploadData({ data: uploadData })
+      .then(value => {
         setDialogShow(false);
         setUploadData(() => ({}));
-      })
-      .catch(err => {
-        console.log(err);
+        setImage(value);
       })
       .finally(() => {
         setContributing(false);
@@ -124,9 +122,8 @@ function App() {
           <Button variant="text" onClick={handleDialogClose}>
             取消
           </Button>
-
           <LoadingButton
-            disabled={Object.keys(uploadData).length !== 3}
+            disabled={!(uploadData.name && uploadData.imageUrl)}
             onClick={handleContribute}
             loading={contributing}
             loadingPosition="start"
@@ -174,29 +171,32 @@ function App() {
             onLoad={() => setImageLoad(true)}
           />
         </div>
-        <div className={styles.comment}>{image.comment}</div>
+        {image.comment && <div className={styles.comment}>{image.comment}</div>}
       </div>
     );
   };
 
   return (
-    <div className={styles.app}>
-      <img src={iconLogo} alt="logo" width="70" />
-      <h1>UNME 陪你過日子</h1>
-      <p>就讓非我設計的每個人，在你最失意的時刻，用最真實的模樣陪伴著你。</p>
-      <div className={cx({ container: true, load: imageLoad })}>
-        <Image />
-      </div>
+    <ThemeProvider theme={theme}>
+      <div className={styles.app}>
+        <img src={iconLogo} alt="logo" width="50" />
+        <h1>UNME 陪你過日子</h1>
+        <p>就讓非我設計的每個人，在你最失意的時刻，用最真實的模樣陪伴著你。</p>
+        <div className={cx({ container: true, load: imageLoad })}>
+          <Image />
+        </div>
 
-      <Button variant="outlined" onClick={handleDialogOpen}>
-        上傳 UNME 的歡樂時光
-      </Button>
-      {ContributeDialog()}
-      <footer>
-        Design by Steve Lee .<br />
-        Contribution by UNME Design.
-      </footer>
-    </div>
+        <Button variant="outlined" onClick={handleDialogOpen}>
+          上傳 UNME 的歡樂時光
+        </Button>
+        {ContributeDialog()}
+        <footer>
+          © 2022 Design by Steve Lee.
+          <br />
+          Contribution by UNME Design.
+        </footer>
+      </div>
+    </ThemeProvider>
   );
 }
 
